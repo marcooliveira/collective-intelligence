@@ -20,7 +20,7 @@ critics = {
 	},
 	'Michael Philips': {
 		'Lady in the Water': 2.5,
-		'Snakes on a Plain': 3.0,
+		'Snakes on a Plane': 3.0,
 		'Superman Returns': 3.5,
 		'The Night Listener': 4.0
 	},
@@ -55,7 +55,7 @@ critics = {
 
 from math import sqrt
 
-# Returns a distance-based similarity score for person1 and person2
+# Returns a distance-based (Euclidean distance) similarity score for person1 and person2
 # Note that this similarity score does not account for consistent grande inflation
 # If one person tends to give higher grades than the other, even though both people
 # might have similar tastes, their distance will be higher. Still, depending on the
@@ -106,3 +106,57 @@ def sim_pearson(prefs,p1,p2):
 	r=num/den
 
 	return r
+
+# For more similarity metrics, http://en.wikipedia.org/wiki/Metric_%28mathematics%29#Examples
+
+
+# Returns the best matches for person from the prefs dictionary
+# Number of results and similarity function are optional params.
+def topMatches(prefs,person,n=5,similarity=sim_pearson):
+	scores=[(similarity(prefs,person,other),other) for other in prefs if other!=person]
+
+	# Sort the list so the highest scores appear at the top
+	scores.sort()
+	scores.reverse()
+	return scores[0:n]
+
+# Gets recommendations for a person by using a weighted average
+# of every other user's rankings
+def getRecommendations(prefs,person,similarity=sim_pearson):
+	totals={}
+	simSums={}
+	for other in prefs:
+		# don't compare me to myself
+		if other==person: continue
+		sim=similarity(prefs,person,other)
+
+		# ignore scores of 0 or lower
+		if sim<=0: continue
+		for item in prefs[other]:
+
+			# only score movies I haven't seen yet
+			if item not in prefs[person] or prefs[person][item]==0:
+				# Similarity * Score
+				totals.setdefault(item,0)
+				totals[item]+=prefs[other][item]*sim
+				# Sum of similarities
+				simSums.setdefault(item,0)
+				simSums[item]+=sim
+
+			# Create the normalized list
+			rankings=[(total/simSums[item],item) for item,total in totals.items()]
+
+			# Return the sorted list
+			rankings.sort()
+			rankings.reverse()
+	return rankings
+
+def transformPrefs(prefs):
+	result={}
+	for person in prefs:
+		for item in prefs[person]:
+			result.setdefault(item,{})
+
+			# Flip item and person
+			result[item][person]=prefs[person][item]
+	return result
